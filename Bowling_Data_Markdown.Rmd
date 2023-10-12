@@ -1,0 +1,77 @@
+---
+title: "Bowling_Project_Markdown"
+output: html_document
+date: "2023-10-12"
+---
+```{r}
+library(dplyr)
+library(DBI)
+library(dbplyr)
+library(odbc)
+library(ggplot2)
+```
+
+```{r}
+con <- DBI::dbConnect(odbc(),
+                      Driver = "ODBC Driver 17 for SQL Server",
+                      Server = "mcobsql.business.nd.edu",
+                      UID = "MSBAstudent",
+                      PWD = "SQL%database!Mendoza",
+                      Port = 3306, 
+                      Database = "BowlingLeagueExample")
+```
+
+```{r}
+longer_statement <- "
+SELECT t.TeamName, t.TeamID, AVG(bs.RawScore) AS AverageTeamScore
+FROM dbo.Bowlers b
+INNER JOIN dbo.Bowler_Scores bs
+ON b.BowlerID = bs.BowlerID
+INNER JOIN dbo.Teams t
+ON b.TeamID = t.TeamID
+GROUP BY t.TeamName, t.TeamID
+ORDER BY TeamName
+"
+
+my_query <- gsub("\\n|\\s+", " ", longer_statement)
+
+select_q <- dbSendQuery(conn = con, 
+                        statement = my_query)
+
+select_res <- dbFetch(select_q)
+
+
+avg_team_score_plot <- ggplot(select_res, aes(x = TeamName, y = AverageTeamScore)) +
+                       geom_point() +
+                       ylim(150, 165) +
+                       theme_minimal()
+
+avg_team_score_plot
+```
+
+```{r}
+longer_statement_2 <- "
+SELECT t.TeamName, COUNT(bs.BowlerID) AS GamesOver180
+FROM dbo.Bowler_Scores bs
+INNER JOIN dbo.Bowlers b
+ON b.BowlerID = bs.BowlerID
+INNER JOIN dbo.Teams t
+ON b.TeamID = t.TeamID
+WHERE bs.RawScore >= 180
+GROUP BY t.TeamName
+"
+
+my_query_2 <- gsub("\\n|\\s+", " ", longer_statement_2)
+
+select_q_2 <- dbSendQuery(conn = con, 
+                        statement = my_query_2)
+
+select_res_2 <- dbFetch(select_q_2)
+
+games_over_180_plot <- ggplot(select_res_2, aes(x = TeamName, y = GamesOver180)) +
+                       geom_col() +
+                       theme_minimal()
+
+games_over_180_plot
+```
+
